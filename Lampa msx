@@ -1,0 +1,149 @@
+
+(function () {
+    'use strict';
+
+    var ID = 'lampa_ptbr_ultimate_v3';
+
+    if (window[ID]) return;
+    window[ID] = true;
+
+    var enabled = true;
+    var active = false;
+    var selected = false;
+    var timer = null;
+
+    function settings() {
+        try {
+            enabled = Lampa.Storage.field('ptbr_ultimate_enabled') !== false;
+        } catch (e) {}
+    }
+
+    function language(track) {
+        return String(
+            track.language ||
+            track.lang ||
+            track.label ||
+            track.name ||
+            ''
+        ).toLowerCase().replace(/_/g, '-');
+    }
+
+    function isBrazilian(track) {
+        var lang = language(track);
+
+        return /pt-br|por-br|pob|brazilian|brasileir/.test(lang);
+    }
+
+    function selectAudio() {
+        if (!enabled || !active) return false;
+
+        try {
+            var video = Lampa.PlayerVideo.video();
+
+            if (!video || !video.audioTracks) return false;
+
+            var tracks = video.audioTracks;
+            var found = false;
+
+            for (var i = 0; i < tracks.length; i++) {
+                if (isBrazilian(tracks[i])) {
+                    tracks[i].enabled = true;
+                    found = true;
+                } else {
+                    tracks[i].enabled = false;
+                }
+            }
+
+            if (found) {
+                selected = true;
+                console.log('[PT-BR Ultimate] Áudio brasileiro selecionado');
+                return true;
+            }
+        } catch (e) {
+            console.log('[PT-BR Ultimate]', e);
+        }
+
+        return false;
+    }
+
+    function retry() {
+        if (!active || !enabled) return;
+
+        if (selectAudio()) {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+    }
+
+    function start() {
+        active = true;
+        selected = false;
+
+        if (timer) clearInterval(timer);
+
+        timer = setInterval(retry, 1500);
+        retry();
+    }
+
+    function stop() {
+        active = false;
+        selected = false;
+
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    function initSettings() {
+        if (!Lampa.SettingsApi) return;
+
+        Lampa.SettingsApi.addComponent({
+            component: ID,
+            name: '🇧🇷 PT-BR Ultimate',
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 2 12l10 10 10-10z"/></svg>'
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: ID,
+            param: {
+                name: 'ptbr_ultimate_enabled',
+                type: 'trigger',
+                default: true
+            },
+            field: {
+                name: 'Prioridade de áudio PT-BR',
+                description: 'Seleciona somente faixas brasileiras identificadas'
+            },
+            onChange: function () {
+                settings();
+                if (enabled) retry();
+            }
+        });
+    }
+
+    function init() {
+        if (!Lampa.Player || !Lampa.PlayerVideo) return;
+
+        settings();
+        initSettings();
+
+        Lampa.Player.listener.follow('start', start);
+        Lampa.Player.listener.follow('destroy', stop);
+
+        Lampa.PlayerVideo.listener.follow('canplay', retry);
+        Lampa.PlayerVideo.listener.follow('tracks', retry);
+
+        console.log('[PT-BR Ultimate 3.0] Instalado');
+    }
+
+    if (window.appready) {
+        init();
+    } else {
+        Lampa.Listener.follow('app', function (event) {
+            if (event.type === 'ready') init();
+        });
+    }
+})();
