@@ -1,177 +1,76 @@
 (function () {
     'use strict';
 
-    var ID = 'LAMPA_PTBR_CAPAS_V3';
+    var ID = 'PTBR_CAPAS_LAMPA_V4';
+
     if (window[ID]) return;
     window[ID] = true;
 
-    var STORE = 'lampa_ptbr_titles_v3';
-    var BADGE = 'lampa-ptbr-badge-v3';
-    var currentTitle = '';
+    function iniciar() {
+        if (!document.body) return;
 
-    function normalize(value) {
-        return String(value || '')
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]+/g, ' ')
-            .trim();
-    }
-
-    function read() {
-        try {
-            return JSON.parse(localStorage.getItem(STORE) || '[]');
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function save(title) {
-        title = normalize(title);
-        if (!title) return;
-
-        var items = read();
-
-        if (items.indexOf(title) === -1) {
-            items.push(title);
-            try {
-                localStorage.setItem(
-                    STORE,
-                    JSON.stringify(items.slice(-500))
-                );
-            } catch (e) {}
-        }
-
-        scan();
-    }
-
-    function isBrazilian(track) {
-        var lang = normalize(
-            (track && (
-                track.language ||
-                track.lang ||
-                track.label ||
-                track.name
-            )) || ''
-        );
-
-        return /pt br|ptbr|pob|por br|brazilian|portugues brasileiro/.test(lang);
-    }
-
-    function checkAudio() {
-        try {
-            if (!window.Lampa || !Lampa.PlayerVideo) return;
-
-            var video = Lampa.PlayerVideo.video();
-            if (!video || !video.audioTracks) return;
-
-            for (var i = 0; i < video.audioTracks.length; i++) {
-                if (isBrazilian(video.audioTracks[i])) {
-                    save(currentTitle);
-                    return;
+        if (!document.getElementById('ptbr-capas-style')) {
+            var css = document.createElement('style');
+            css.id = 'ptbr-capas-style';
+            css.textContent = `
+                .ptbr-capas-selo {
+                    position: absolute;
+                    top: 5px;
+                    left: 5px;
+                    z-index: 9999;
+                    background: #168b43;
+                    color: white;
+                    padding: 4px 7px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: bold;
                 }
-            }
-        } catch (e) {}
-    }
+            `;
+            document.head.appendChild(css);
+        }
 
-    function addStyle() {
-        if (document.getElementById(BADGE + '-style')) return;
-
-        var style = document.createElement('style');
-        style.id = BADGE + '-style';
-        style.textContent =
-            '.' + BADGE + '{' +
-            'position:absolute!important;' +
-            'top:6px!important;left:6px!important;' +
-            'z-index:999!important;' +
-            'background:#168b43!important;' +
-            'color:#fff!important;' +
-            'padding:4px 7px!important;' +
-            'border-radius:4px!important;' +
-            'font-size:10px!important;' +
-            'font-weight:bold!important;' +
-            'pointer-events:none!important;' +
-            '}';
-        document.head.appendChild(style);
-    }
-
-    function scan() {
-        try {
-            var items = read();
+        function verificar() {
             var cards = document.querySelectorAll('.card');
 
-            for (var i = 0; i < cards.length; i++) {
-                var card = cards[i];
+            cards.forEach(function (card) {
+                var texto = (card.innerText || '').toLowerCase();
 
-                var titleElement = card.querySelector(
-                    '.card__title, .card__title-inner, .card__name'
-                );
+                var confirmado =
+                    texto.includes('pt-br') ||
+                    texto.includes('ptbr') ||
+                    texto.includes('português brasileiro');
 
-                var view = card.querySelector(
-                    '.card__view, .card__img'
-                );
+                var imagem = card.querySelector('.card__view');
 
-                if (!titleElement || !view) continue;
+                if (confirmado && imagem &&
+                    !imagem.querySelector('.ptbr-capas-selo')) {
 
-                var title = normalize(titleElement.textContent);
-                var found = items.indexOf(title) !== -1;
-                var badge = view.querySelector('.' + BADGE);
+                    imagem.style.position = 'relative';
 
-                if (found && !badge) {
-                    badge = document.createElement('span');
-                    badge.className = BADGE;
-                    badge.textContent = '🇧🇷 PT-BR';
-                    view.appendChild(badge);
+                    var selo = document.createElement('span');
+                    selo.className = 'ptbr-capas-selo';
+                    selo.textContent = '🇧🇷 PT-BR';
+
+                    imagem.appendChild(selo);
                 }
-            }
-        } catch (e) {}
+            });
+        }
+
+        verificar();
+
+        if (window.MutationObserver) {
+            new MutationObserver(verificar).observe(
+                document.body,
+                { childList: true, subtree: true }
+            );
+        }
     }
 
-    function init() {
-        addStyle();
-
-        if (Lampa.Player && Lampa.Player.listener) {
-            Lampa.Player.listener.follow('start', function () {
-                var title = document.querySelector(
-                    '.full-start__title, .full-start-new__title'
-                );
-
-                currentTitle = title
-                    ? title.textContent
-                    : '';
-
-                checkAudio();
-            });
-
-            Lampa.Player.listener.follow('destroy', function () {
-                currentTitle = '';
-            });
-        }
-
-        if (Lampa.PlayerVideo && Lampa.PlayerVideo.listener) {
-            ['canplay', 'tracks', 'timeupdate'].forEach(function (event) {
-                Lampa.PlayerVideo.listener.follow(event, checkAudio);
-            });
-        }
-
-        scan();
-
-        if (window.MutationObserver && document.body) {
-            var observer = new MutationObserver(scan);
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        }
-
-        console.log('[Lampa PT-BR Capas 3.0] Ativo');
-    }
-
-    if (window.appready) {
-        init();
-    } else {
+    if (window.Lampa && window.appready) {
+        iniciar();
+    } else if (window.Lampa && Lampa.Listener) {
         Lampa.Listener.follow('app', function (event) {
-            if (event.type === 'ready') init();
+            if (event.type === 'ready') iniciar();
         });
     }
 })();
