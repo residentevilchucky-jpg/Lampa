@@ -1,0 +1,76 @@
+(function () {
+    'use strict';
+
+    var ID = 'PTBR_CAPAS_LAMPA_V4';
+
+    if (window[ID]) return;
+    window[ID] = true;
+
+    function iniciar() {
+        if (!document.body) return;
+
+        if (!document.getElementById('ptbr-capas-style')) {
+            var css = document.createElement('style');
+            css.id = 'ptbr-capas-style';
+            css.textContent = `
+                .ptbr-capas-selo {
+                    position: absolute;
+                    top: 5px;
+                    left: 5px;
+                    z-index: 9999;
+                    background: #168b43;
+                    color: white;
+                    padding: 4px 7px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    font-weight: bold;
+                }
+            `;
+            document.head.appendChild(css);
+        }
+
+        function verificar() {
+            var cards = document.querySelectorAll('.card');
+
+            cards.forEach(function (card) {
+                var texto = (card.innerText || '').toLowerCase();
+
+                var confirmado =
+                    texto.includes('pt-br') ||
+                    texto.includes('ptbr') ||
+                    texto.includes('português brasileiro');
+
+                var imagem = card.querySelector('.card__view');
+
+                if (confirmado && imagem &&
+                    !imagem.querySelector('.ptbr-capas-selo')) {
+
+                    imagem.style.position = 'relative';
+
+                    var selo = document.createElement('span');
+                    selo.className = 'ptbr-capas-selo';
+                    selo.textContent = '🇧🇷 PT-BR';
+
+                    imagem.appendChild(selo);
+                }
+            });
+        }
+
+        verificar();
+
+        if (window.MutationObserver) {
+            new MutationObserver(verificar).observe(
+                document.body,
+                { childList: true, subtree: true }
+            );
+        }
+    }
+
+    if (window.Lampa && window.appready) {
+        iniciar();
+    } else if (window.Lampa && Lampa.Listener) {
+        Lampa.Listener.follow('app', function (event) {
+            if (event.type === 'ready') iniciar();
+        });
+    }
+})();
