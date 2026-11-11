@@ -1,0 +1,50 @@
+(function () {
+'use strict';
+
+var ID = 'lampa_ptbr_capas_v1';
+if (window[ID]) return;
+window[ID] = true;
+
+function detectar(card) {
+    var texto = (card.innerText || '') + ' ' +
+        (card.getAttribute('title') || '') + ' ' +
+        (card.getAttribute('aria-label') || '');
+
+    return /pt-br|pob|por-br|portugu[eê]s brasileiro|dublado pt-br/i.test(texto);
+}
+
+function adicionar(card) {
+    if (!detectar(card) || card.querySelector('.ptbr-badge')) return;
+
+    var capa = card.querySelector('.card__view, .card__img, img') || card;
+
+    var selo = document.createElement('div');
+    selo.className = 'ptbr-badge';
+    selo.textContent = 'DUBLADO PT-BR';
+    selo.style.cssText =
+        'position:absolute;top:6px;left:6px;z-index:999;background:#168a45;color:white;padding:5px;border-radius:4px;font:bold 10px Arial;pointer-events:none;';
+
+    if (getComputedStyle(capa).position === 'static')
+        capa.style.position = 'relative';
+
+    capa.appendChild(selo);
+}
+
+function verificar() {
+    document.querySelectorAll('.card, .card__view, .items-line .item, .full-start__card')
+        .forEach(adicionar);
+}
+
+function iniciar() {
+    verificar();
+    new MutationObserver(verificar).observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', iniciar);
+else iniciar();
+
+})();
