@@ -1,0 +1,68 @@
+
+(function () {
+    'use strict';
+
+    if (window.LampaPTBRCapas) return;
+    window.LampaPTBRCapas = true;
+
+    var STYLE = `
+        .ptbr-capa-badge {
+            position: absolute;
+            top: 7px;
+            left: 7px;
+            z-index: 99;
+            background: #00a83b;
+            color: white;
+            padding: 4px 7px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px #000;
+        }
+    `;
+
+    function addStyle() {
+        if (document.getElementById('ptbr-capas-style')) return;
+        var style = document.createElement('style');
+        style.id = 'ptbr-capas-style';
+        style.textContent = STYLE;
+        document.head.appendChild(style);
+    }
+
+    function markCards() {
+        document.querySelectorAll('.card').forEach(function (card) {
+            if (card.querySelector('.ptbr-capa-badge')) return;
+
+            var data = JSON.stringify(card.dataset || {}).toLowerCase();
+            var text = card.innerText.toLowerCase();
+            var info = data + ' ' + text;
+
+            if (/pt-br|pt_br|pob|portugu[eê]s brasileiro|dublado em portugu[eê]s/.test(info)) {
+                card.style.position = 'relative';
+
+                var badge = document.createElement('div');
+                badge.className = 'ptbr-capa-badge';
+                badge.textContent = '🇧🇷 PT-BR';
+
+                card.appendChild(badge);
+            }
+        });
+    }
+
+    function start() {
+        addStyle();
+        markCards();
+
+        var observer = new MutationObserver(markCards);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+})();
