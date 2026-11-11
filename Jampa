@@ -1,0 +1,107 @@
+(function () {
+'use strict';
+
+var ID = 'lampa_ptbr_dual_audio_v1';
+if (window[ID]) return;
+window[ID] = true;
+
+var ativo = false;
+var temporizador = null;
+
+function idioma(track) {
+    return String(
+        track.language ||
+        track.lang ||
+        track.label ||
+        track.name ||
+        ''
+    ).toLowerCase().replace(/_/g, '-');
+}
+
+function pontuar(track) {
+    var lang = idioma(track);
+
+    if (/pt-br|pob|por-br|brazil|brasileir/.test(lang))
+        return 100;
+
+    if (/^(pt|por)$|portugu[eê]s/.test(lang))
+        return 80;
+
+    return 0;
+}
+
+function selecionar() {
+    if (!ativo) return;
+
+    try {
+        var video = Lampa.PlayerVideo.video();
+        if (!video || !video.audioTracks) return;
+
+        var tracks = video.audioTracks;
+        var melhor = null;
+        var pontos = 0;
+
+        for (var i = 0; i < tracks.length; i++) {
+            var valor = pontuar(tracks[i]);
+
+            if (valor > pontos) {
+                pontos = valor;
+                melhor = tracks[i];
+            }
+        }
+
+        if (melhor) {
+            for (var j = 0; j < tracks.length; j++) {
+                tracks[j].enabled = tracks[j] === melhor;
+            }
+
+            console.log(
+                '[PT-BR DUAL AUDIO] Selecionado:',
+                idioma(melhor)
+            );
+
+            if (temporizador) {
+                clearInterval(temporizador);
+                temporizador = null;
+            }
+        }
+    } catch (e) {
+        console.log('[PT-BR AUDIO]', e);
+    }
+}
+
+function iniciar() {
+    ativo = true;
+
+    if (temporizador) clearInterval(temporizador);
+
+    selecionar();
+    temporizador = setInterval(selecionar, 1200);
+}
+
+function parar() {
+    ativo = false;
+
+    if (temporizador) clearInterval(temporizador);
+
+    temporizador = null;
+}
+
+function init() {
+    if (!Lampa.Player || !Lampa.PlayerVideo) return;
+
+    Lampa.Player.listener.follow('start', iniciar);
+    Lampa.Player.listener.follow('destroy', parar);
+
+    Lampa.PlayerVideo.listener.follow('canplay', selecionar);
+    Lampa.PlayerVideo.listener.follow('tracks', selecionar);
+
+    console.log('[PT-BR DUAL AUDIO] Inicializado');
+}
+
+if (window.appready) init();
+else Lampa.Listener.follow('app', function (event) {
+    if (event.type === 'ready') init();
+});
+
+})();
