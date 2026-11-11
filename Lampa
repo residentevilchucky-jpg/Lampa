@@ -1,0 +1,76 @@
+
+(function () {
+    'use strict';
+
+    if (window.LampaPTBRUltimate) return;
+    window.LampaPTBRUltimate = true;
+
+    var LANGUAGES = [
+        'pt-br',
+        'pt_br',
+        'por-br',
+        'pob',
+        'brazilian',
+        'português brasileiro',
+        'portuguese (brazil)'
+    ];
+
+    function isPortuguese(track) {
+        if (!track) return false;
+
+        var info = [
+            track.language,
+            track.lang,
+            track.title,
+            track.label,
+            track.name
+        ].join(' ').toLowerCase();
+
+        return LANGUAGES.some(function (lang) {
+            return info.indexOf(lang) !== -1;
+        });
+    }
+
+    function selectPortuguese() {
+        try {
+            if (!window.Lampa || !Lampa.PlayerVideo) return;
+
+            var player = Lampa.PlayerVideo;
+            var video = player.video && player.video();
+
+            if (!video) return;
+
+            var tracks = video.audioTracks;
+
+            if (!tracks || !tracks.length) return;
+
+            for (var i = 0; i < tracks.length; i++) {
+                if (isPortuguese(tracks[i])) {
+                    tracks[i].enabled = true;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.log('[PT-BR] Erro:', e);
+        }
+    }
+
+    function start() {
+        selectPortuguese();
+
+        if (window.Lampa && Lampa.Listener) {
+            Lampa.Listener.follow('player', function () {
+                setTimeout(selectPortuguese, 1000);
+                setTimeout(selectPortuguese, 3000);
+            });
+        }
+    }
+
+    if (window.Lampa) {
+        start();
+    } else {
+        document.addEventListener('DOMContentLoaded', start);
+    }
+
+    console.log('[PT-BR Ultimate] Plugin carregado');
+})();
