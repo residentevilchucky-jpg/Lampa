@@ -1,50 +1,88 @@
 (function () {
-'use strict';
+    'use strict';
 
-var ID = 'lampa_ptbr_capas_v1';
-if (window[ID]) return;
-window[ID] = true;
+    var ID = 'lampa_ptbr_capas_v2';
 
-function detectar(card) {
-    var texto = (card.innerText || '') + ' ' +
-        (card.getAttribute('title') || '') + ' ' +
-        (card.getAttribute('aria-label') || '');
+    if (window[ID]) return;
+    window[ID] = true;
 
-    return /pt-br|pob|por-br|portugu[eê]s brasileiro|dublado pt-br/i.test(texto);
-}
+    function iniciar() {
+        if (!window.Lampa) return;
 
-function adicionar(card) {
-    if (!detectar(card) || card.querySelector('.ptbr-badge')) return;
+        var css = `
+            .ptbr-capas-badge {
+                position: absolute;
+                left: 5px;
+                top: 5px;
+                z-index: 9999;
+                background: #159447;
+                color: #fff;
+                padding: 4px 7px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: bold;
+                pointer-events: none;
+            }
+            .card {
+                position: relative;
+            }
+        `;
 
-    var capa = card.querySelector('.card__view, .card__img, img') || card;
+        if (!document.getElementById('ptbr-capas-style')) {
+            var style = document.createElement('style');
+            style.id = 'ptbr-capas-style';
+            style.textContent = css;
+            document.head.appendChild(style);
+        }
 
-    var selo = document.createElement('div');
-    selo.className = 'ptbr-badge';
-    selo.textContent = 'DUBLADO PT-BR';
-    selo.style.cssText =
-        'position:absolute;top:6px;left:6px;z-index:999;background:#168a45;color:white;padding:5px;border-radius:4px;font:bold 10px Arial;pointer-events:none;';
+        function verificar() {
+            var cards = document.querySelectorAll('.card');
 
-    if (getComputedStyle(capa).position === 'static')
-        capa.style.position = 'relative';
+            cards.forEach(function (card) {
+                if (card.querySelector('.ptbr-capas-badge')) return;
 
-    capa.appendChild(selo);
-}
+                var texto = (
+                    card.innerText ||
+                    card.textContent ||
+                    ''
+                ).toLowerCase();
 
-function verificar() {
-    document.querySelectorAll('.card, .card__view, .items-line .item, .full-start__card')
-        .forEach(adicionar);
-}
+                var imagens = card.querySelectorAll('img');
 
-function iniciar() {
-    verificar();
-    new MutationObserver(verificar).observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-}
+                imagens.forEach(function (img) {
+                    texto += ' ' + (img.alt || '');
+                    texto += ' ' + (img.title || '');
+                });
 
-if (document.readyState === 'loading')
-    document.addEventListener('DOMContentLoaded', iniciar);
-else iniciar();
+                if (
+                    /pt[- ]?br|portugu[eê]s brasileiro|dublado em portugu[eê]s|dual audio|dual áudio|\bpob\b/.test(texto)
+                ) {
+                    var badge = document.createElement('div');
+                    badge.className = 'ptbr-capas-badge';
+                    badge.textContent = 'ÁUDIO PT-BR';
+                    card.appendChild(badge);
+                }
+            });
+        }
 
+        verificar();
+
+        if (window.MutationObserver) {
+            var observer = new MutationObserver(verificar);
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        console.log('[PT-BR Capas] Plugin iniciado');
+    }
+
+    if (window.appready) {
+        iniciar();
+    } else if (window.Lampa && Lampa.Listener) {
+        Lampa.Listener.follow('app', function (e) {
+            if (e.type === 'ready') iniciar();
+        });
+    }
 })();
